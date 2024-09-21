@@ -211,8 +211,7 @@ public class ConcurrentMessageListenerContainerTests {
 		Set<KafkaMessageListenerContainer<Integer, String>> children = new HashSet<>(containers);
 		assertThat(container.isInExpectedState()).isTrue();
 		MessageListenerContainer childContainer = container.getContainers().get(0);
-		container.getContainers().get(0).stopAbnormally(() -> {
-		});
+
 		assertThat(container.isInExpectedState()).isFalse();
 		container.getContainers().get(0).start();
 		container.stop();

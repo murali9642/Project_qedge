@@ -90,7 +90,7 @@ import reactor.core.publisher.Mono;
  * @author Nathan Xu
  * @author Wang ZhiYang
  * @author Huijin Hong
- * @author Soby Chacko
+
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 

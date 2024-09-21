@@ -57,20 +57,7 @@ ext {
 	jacksonBomVersion = '2.17.2'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.11.0'
-	kafkaVersion = '3.8.0'
-	kotlinCoroutinesVersion = '1.8.1'
-	log4jVersion = '2.24.0'
-	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.14.0-SNAPSHOT'
-	micrometerTracingVersion = '1.4.0-M3'
-	mockitoVersion = '5.13.0'
-	reactorVersion = '2024.0.0-SNAPSHOT'
-	scalaVersion = '2.13'
-	springBootVersion = '3.3.4' // docs module
-	springDataVersion = '2024.0.4'
-	springRetryVersion = '2.0.9'
-	springVersion = '6.2.0-SNAPSHOT'
+
 	zookeeperVersion = '3.8.4'
 
 	idPrefix = 'kafka'
