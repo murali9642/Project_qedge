@@ -1,6 +1,131 @@
 [[history]]
 = Change History
 
+[[what-s-new-in-3-2-since-3-1]]
+== What's New in 3.2 Since 3.1
+:page-section-summary-toc: 1
+
+This section covers the changes made from version 3.1 to version 3.2.
+For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
+
+[[x32-kafka-client-version]]
+=== Kafka Client Version
+
+This version requires 3.7.0 `kafka-clients`.
+The 3.7.0 version of Kafka client introduces the new consumer group protocol.
+Fore more details and it's limitations see https://cwiki.apache.org/confluence/display/KAFKA/The+Next+Generation+of+the+Consumer+Rebalance+Protocol+%28KIP-848%29+-+Early+Access+Release+Notes[KIP-848].
+The new consumer group protocol is an early access release and not meant to be used in production.
+It is only recommended to use for testing purposes in this version.
+Therefore, Spring for Apache Kafka supports this new consumer group protocol only to the extent of such testing level support available in the `kafka-client` itself.
+By default, Spring for Apache Kafka uses the classic consumer group protocol and when testing the new consumer group protocol, that needs to be opted-in via the `group.protocol` property on the consumer.
+
+[[x32-testing-support-changes]]
+=== Testing Support Changes
+
+The `kraft` mode is disabled in `EmbeddedKafka` by default and users wanting to use the `kraft` mode must enable it.
+This is due to certain instabilities observed while using `EmbeddedKafka` in `kraft` mode, especially when testing the new consumer group protocol.
+The new consumer group protocol is only supported in `kraft` mode and because of this, when testing the new protocol, that needs to be done against a real Kafka cluster and not the one based on the `KafkaClusterTestKit`, which `EmbeddedKafka` is based upon.
+In addition, there were some other race conditions observed, while running multiple `KafkaListener` methods with `EmbeddedKafka` in `kraft` mode.
+Until these issues are resolved, the `kraft` default on `EmbeddedKafka` will remain as `false`.
+
+[[x32-kafka-streams-iqs-support]]
+=== Kafka Streams Interactive Query Support
+
+A new API `KafkaStreamsInteractiveQuerySupport` for accessing queryable stores used in Kafka Streams interactive queries.
+See xref:streams.adoc#kafka-streams-iq-support[Kafka Streams Interactive Support] for more details.
+
+[[x32-tiss]]
+=== TransactionIdSuffixStrategy
+
+A new `TransactionIdSuffixStrategy` interface was introduced to manage `transactional.id` suffix.
+The default implementation is `DefaultTransactionIdSuffixStrategy` when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range, otherwise suffixes will be generated on the fly by incrementing a counter.
+See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionIdSuffix] for more information.
+
+[[x32-async-return]]
+=== Async @KafkaListener Return
+
+`@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types include `CompletableFuture<?>`, `Mono<?>` and Kotlin `suspend` functions.
+See xref:kafka/receiving-messages/async-returns.adoc[Async Returns] for more information.
+
+[[x32-customizable-dlt-routing]]
+=== Routing of messages to custom DLTs based on thrown exceptions
+
+It's now possible to redirect messages to the custom DLTs based on the type of the exception, which has been thrown during the message processing.
+Rules for the redirection are set either via the `RetryableTopic.exceptionBasedDltRouting` or the `RetryTopicConfigurationBuilder.dltRoutingRules`.
+Custom DLTs are created automatically as well as other retry and dead-letter topics.
+See xref:retrytopic/features.adoc#exc-based-custom-dlt-routing[Routing of messages to custom DLTs based on thrown exceptions] for more information.
+
+[[x32-cp-ptm]]
+=== Deprecating ContainerProperties transactionManager property
+
+Deprecating the `transactionManager` property in `ContainerProperties` in favor of `KafkaAwareTransactionManager`,  a narrower type compared to the general `PlatformTransactionManager`. See xref:kafka/container-props.adoc#kafkaAwareTransactionManager[ContainerProperties] and xref:kafka/transactions.adoc#transaction-synchronization[Transaction Synchronization].
+
+[[x32-after-rollback-processing]]
+=== After Rollback Processing
+
+A new `AfterRollbackProcessor` API `processBatch` is provided.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
+
+[[x32-retry-topic]]
+=== Change @RetryableTopic SameIntervalTopicReuseStrategy default value
+Change `@RetryableTopic` property `SameIntervalTopicReuseStrategy` default value to `SINGLE_TOPIC`.
+See xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[Single Topic for maxInterval Exponential Delay].
+
+=== Non-blocking retries support class level @KafkaListener
+Non-blocking retries support xref:kafka/receiving-messages/class-level-kafkalistener.adoc[@KafkaListener on a Class].
+See xref:retrytopic.adoc[Non-Blocking Retries].
+
+=== Support process @RetryableTopic on a class in RetryTopicConfigurationProvider.
+Provides a new public API to find `RetryTopicConfiguration`.
+See xref:retrytopic/retry-config.adoc#find-retry-topic-config[Find RetryTopicConfiguration]
+
+=== RetryTopicConfigurer support process MultiMethodKafkaListenerEndpoint.
+The `RetryTopicConfigurer` support process and register `MultiMethodKafkaListenerEndpoint`.
+The `MultiMethodKafkaListenerEndpoint` provides `getter/setter` for properties `defaultMethod` and `methods`.
+Modify the `EndpointCustomizer` that strictly for `MethodKafkaListenerEndpoint` types.
+The `EndpointHandlerMethod` add new constructors construct an instance for the provided bean.
+Provides new class `EndpointHandlerMultiMethod` to handler multi method for retrying endpoints.
+
+[[x32-seek-offset-compute-fn]]
+=== New API method to seek to an offset based on a user provided function
+`ConsumerCallback` provides a new API to seek to an offset based on a user-defined function, which takes the current offset in the consumer as an argument.
+See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
+
+[[x32-annotation-partition-offset-seek-position]]
+=== @PartitionOffset support for SeekPosition
+Adding `seekPosition` property to `@PartitionOffset` support for `TopicPartitionOffset.SeekPosition`.
+See xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual-assignment] for more details.
+
+[[x32-topic-partition-offset-constructor]]
+=== New constructor in TopicPartitionOffset that accepts a function to compute the offset to seek to
+`TopicPartitionOffset` has a new constructor that takes a user-provided function to compute the offset to seek to.
+When this constructor is used, the framework calls the function with the input argument of the current consumer offset position.
+See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
+
+[[x32-default-clientid-prefix]]
+=== Spring Boot application name as default client ID prefix
+
+For Spring Boot applications which define an application name, this name is now used
+as a default prefix for auto-generated client IDs for certain client types.
+See xref:kafka/connecting.adoc#default-client-id-prefixes[Default client ID prefixes] for more details.
+
+[[get-listener-containers-matching]]
+== Enhanced Retrieval of MessageListenerContainers
+
+`ListenerContainerRegistry` provides two new API's dynamically find and filter `MessageListenerContainer` instances.
+`getListenerContainersMatching(Predicate<String> idMatcher)` to filter by ID and the other is
+`getListenerContainersMatching(BiPredicate<String, MessageListenerContainer> matcher)` to filter by ID and container properties.
+
+See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#retrieving-message-listener-containers[`@KafkaListener` Lifecycle Management's API Docs] for more information.
+
+[[x32-observation]]
+== Enhanced observation by providing more tracing tags
+
+`KafkaTemplateObservation` provides more tracing tags(low cardinality).
+`KafkaListenerObservation` provides a new API to find high cardinality key names and more tracing tags(high or low cardinality).
+See xref:kafka/micrometer.adoc#observation[Micrometer Observation]
+
+
 [[what-s-new-in-3-1-since-3-0]]
 == What's New in 3.1 Since 3.0
 :page-section-summary-toc: 1

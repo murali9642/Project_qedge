@@ -39,6 +39,7 @@ import org.springframework.lang.Nullable;
  * @author Tomaz Fernandes
  * @author Francois Rosiere
  * @author Soby Chacko
+ * @author Lokesh Alamuri
  */
 public interface MessageListenerContainer extends SmartLifecycle, DisposableBean {
 
@@ -279,6 +280,14 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	 * @since 2.9.7
 	 */
 	default void childStopped(MessageListenerContainer child, ConsumerStoppedEvent.Reason reason) {
+	}
+
+	/**
+	 * Notify a parent container that a child container has started.
+	 * @param child the container.
+	 * @since 3.3
+	 */
+	default void childStarted(MessageListenerContainer child) {
 	}
 
 	@Override

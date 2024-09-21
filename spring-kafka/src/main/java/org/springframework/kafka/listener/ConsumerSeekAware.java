@@ -22,6 +22,8 @@ import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.lang.Nullable;
+
 /**
  * Listeners that implement this interface are provided with a
  * {@link ConsumerSeekCallback} which can be used to perform a
@@ -29,8 +31,8 @@ import org.apache.kafka.common.TopicPartition;
  *
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Borahm Lee
  * @since 1.1
- *
  */
 public interface ConsumerSeekAware {
 
@@ -229,6 +231,17 @@ public interface ConsumerSeekAware {
 		 */
 		void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 
+		/**
+		 * Retrieve the group ID associated with this consumer seek callback, if available.
+		 * This method returns {@code null} by default, indicating that the group ID is not specified.
+		 * Implementations may override this method to provide a specific group ID value.
+		 * @return the consumer group ID.
+		 * @since 3.3
+		 */
+		@Nullable
+		default String getGroupId() {
+			return null;
+		}
 	}
 
 }

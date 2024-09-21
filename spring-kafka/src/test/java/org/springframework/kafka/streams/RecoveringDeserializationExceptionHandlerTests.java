@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,6 +69,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.3
  *
  */
@@ -78,7 +79,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 public class RecoveringDeserializationExceptionHandlerTests {
 
 	@Autowired
-	private KafkaTemplate<byte[], byte[]> kafkaTemplate;
+	private KafkaOperations<byte[], byte[]> kafkaTemplate;
 
 	@Autowired
 	private CompletableFuture<ConsumerRecord<byte[], byte[]>> resultFuture;
@@ -91,9 +92,9 @@ public class RecoveringDeserializationExceptionHandlerTests {
 				Recoverer.class.getName());
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
 	}
 
@@ -104,30 +105,30 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, Recoverer.class);
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
 	}
 
 	@Test
 	void viaObjectProperty() {
 		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		Map<String, Object> configs = new HashMap<String, Object>();
+		Map<String, Object> configs = new HashMap<>();
 		Recoverer rec = new Recoverer();
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, rec);
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isSameAs(rec);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
 	}
 
 	@Test
 	void withNoRecoverer() {
 		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		assertThat(handler.handle(null, new ConsumerRecord<byte[], byte[]>("foo", 0, 0, null, null),
+		assertThat(handler.handle(null, new ConsumerRecord<>("foo", 0, 0, null, null),
 				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.FAIL);
 	}
 
@@ -177,7 +178,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		}
 
 		@Bean
-		public KafkaOperations<byte[], byte[]> template() {
+		public KafkaTemplate<byte[], byte[]> template() {
 			KafkaTemplate<byte[], byte[]> kafkaTemplate = new KafkaTemplate<>(producerFactory(), true);
 			kafkaTemplate.setDefaultTopic("recoverer1");
 			return kafkaTemplate;

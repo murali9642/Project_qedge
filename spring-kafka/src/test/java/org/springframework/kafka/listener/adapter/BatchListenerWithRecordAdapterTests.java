@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.2.5
  *
  */
@@ -52,8 +53,8 @@ public class BatchListenerWithRecordAdapterTests {
 				(BatchMessagingMessageListenerAdapter<String, String>) registry
 					.getListenerContainer("batchRecordAdapter").getContainerProperties().getMessageListener();
 		List<ConsumerRecord<String, String>> records = new ArrayList<>();
-		records.add(new ConsumerRecord<String, String>("foo", 0, 0, null, "foo"));
-		ConsumerRecord<String, String> barRecord = new ConsumerRecord<String, String>("foo", 0, 1, null, "bar");
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		ConsumerRecord<String, String> barRecord = new ConsumerRecord<>("foo", 0, 1, null, "bar");
 		records.add(barRecord);
 		records.add(new ConsumerRecord<String, String>("foo", 0, 2, null, "baz"));
 		adapter.onMessage(records, null, null);
@@ -71,10 +72,10 @@ public class BatchListenerWithRecordAdapterTests {
 				(BatchMessagingMessageListenerAdapter<String, String>) registry
 					.getListenerContainer("batchRecordAdapterFullRecord").getContainerProperties().getMessageListener();
 		List<ConsumerRecord<String, String>> records = new ArrayList<>();
-		records.add(new ConsumerRecord<String, String>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		ConsumerRecord<String, String> barRecord = new ConsumerRecord<String, String>("foo", 0, 1, null, "bar");
 		records.add(barRecord);
-		records.add(new ConsumerRecord<String, String>("foo", 0, 2, null, "baz"));
+		records.add(new ConsumerRecord<>("foo", 0, 2, null, "baz"));
 		adapter.onMessage(records, null, null);
 		assertThat(foo.values2).contains("foo", "bar", "baz");
 		assertThat(config.failed).isNull();

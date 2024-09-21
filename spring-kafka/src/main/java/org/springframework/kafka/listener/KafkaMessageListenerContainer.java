@@ -165,6 +165,8 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Raphael Rösch
  * @author Christian Mergenthaler
  * @author Mikael Carlstedt
+ * @author Borahm Lee
+ * @author Lokesh Alamuri
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -681,7 +683,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final TransactionTemplate transactionTemplate;
 
-		private final String consumerGroupId = getGroupId();
+		private final String consumerGroupId = KafkaMessageListenerContainer.this.getGroupId();
 
 		private final TaskScheduler taskScheduler;
 
@@ -1362,11 +1364,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
-			setupSeeks();
 			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
+			setupSeeks();
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
+			KafkaMessageListenerContainer.this.thisOrParentContainer.childStarted(KafkaMessageListenerContainer.this);
 			publishConsumerStartedEvent();
 		}
 
@@ -1906,7 +1909,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
 				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
-			this.logger.info(() -> getGroupId() + ": Consumer stopped");
+			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
 			publishConsumerStoppedEvent(throwable);
 		}
 
@@ -2209,6 +2212,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				try {
 					invokeBatchErrorHandler(records, recordList, e);
 					commitOffsetsIfNeededAfterHandlingError(records);
+				}
+				catch (RecordInRetryException rire) {
+					this.logger.info("Record in retry and not yet recovered");
+					return rire;
 				}
 				catch (KafkaException ke) {
 					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
@@ -2693,7 +2700,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), getGroupId(),
+					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), this.consumerGroupId,
 							this::clusterId),
 					this.observationRegistry);
 			return observation.observe(() -> {
@@ -2712,6 +2719,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					try {
 						invokeErrorHandler(cRecord, iterator, e);
 						commitOffsetsIfNeededAfterHandlingError(cRecord);
+					}
+					catch (RecordInRetryException rire) {
+						this.logger.info("Record in retry and not yet recovered");
+						return rire;
 					}
 					catch (KafkaException ke) {
 						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
@@ -3002,14 +3013,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private boolean checkPartitionAssignedBeforeSeek(@Nullable Collection<TopicPartition> assigned, TopicPartition topicPartition) {
+			if (assigned != null && assigned.contains(topicPartition)) {
+				return true;
+			}
+			this.logger.warn("No current assignment for partition '" + topicPartition +
+					"' due to partition reassignment prior to seeking.");
+			return false;
+		}
+
 		private void processSeeks() {
-			processTimestampSeeks();
+			Collection<TopicPartition> assigned = getAssignedPartitions();
+			processTimestampSeeks(assigned);
 			TopicPartitionOffset offset = this.seeks.poll();
 			while (offset != null) {
 				traceSeek(offset);
 				try {
-					SeekPosition position = offset.getPosition();
 					TopicPartition topicPartition = offset.getTopicPartition();
+					if (!checkPartitionAssignedBeforeSeek(assigned, topicPartition)) {
+						offset = this.seeks.poll();
+						continue;
+					}
+					SeekPosition position = offset.getPosition();
 					Long whereTo = offset.getOffset();
 					Function<Long, Long> offsetComputeFunction = offset.getOffsetComputeFunction();
 					if (position == null) {
@@ -3054,11 +3079,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void processTimestampSeeks() {
+		private void processTimestampSeeks(@Nullable Collection<TopicPartition> assigned) {
 			Iterator<TopicPartitionOffset> seekIterator = this.seeks.iterator();
 			Map<TopicPartition, Long> timestampSeeks = null;
 			while (seekIterator.hasNext()) {
 				TopicPartitionOffset tpo = seekIterator.next();
+				if (!checkPartitionAssignedBeforeSeek(assigned, tpo.getTopicPartition())) {
+					seekIterator.remove();
+					continue;
+				}
 				if (SeekPosition.TIMESTAMP.equals(tpo.getPosition())) {
 					if (timestampSeeks == null) {
 						timestampSeeks = new HashMap<>();
@@ -3325,6 +3354,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Override
 		public void seekToTimestamp(Collection<TopicPartition> topicParts, long timestamp) {
 			topicParts.forEach(tp -> seekToTimestamp(tp.topic(), tp.partition(), timestamp));
+		}
+
+		@Override
+		public String getGroupId() {
+			return this.consumerGroupId;
 		}
 
 		@Override

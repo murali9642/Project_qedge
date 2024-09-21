@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
@@ -70,6 +69,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.2
  *
  */
@@ -153,7 +153,7 @@ public class SeekToCurrentRecovererTests {
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(failedGroupId.get()).isEqualTo("seekTestMaxFailures");
 
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "seekTestMaxFailures.dlt");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "seekTestMaxFailures-dlt");
 		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
 		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);
@@ -180,7 +180,7 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
@@ -227,14 +227,14 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null);
@@ -267,11 +267,11 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
@@ -308,7 +308,7 @@ public class SeekToCurrentRecovererTests {
 		OffsetCommitCallback commitCallback = (offsets, ex) -> { };
 		properties.setCommitCallback(commitCallback);
 		given(container.getContainerProperties()).willReturn(properties);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 			eh.handleRemaining(new RuntimeException(), records, consumer, container));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verify(consumer).seek(new TopicPartition("foo", 1),  0L);
@@ -340,7 +340,7 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		for (int i = 0; i < 20; i++) {
-			assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		}
 		verify(consumer, times(20)).seek(new TopicPartition("foo", 0),  0L);

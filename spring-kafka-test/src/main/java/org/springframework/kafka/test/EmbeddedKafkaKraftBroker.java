@@ -70,6 +70,8 @@ import kafka.testkit.TestKitNodes;
  * @author Nakul Mishra
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
+ * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 3.1
  */
@@ -252,15 +254,15 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	}
 
 	private void addDefaultBrokerPropsIfAbsent() {
-		this.brokerProperties.putIfAbsent(KafkaConfig.DeleteTopicEnableProp(), "true");
-		this.brokerProperties.putIfAbsent(KafkaConfig.GroupInitialRebalanceDelayMsProp(), "0");
-		this.brokerProperties.putIfAbsent(KafkaConfig.OffsetsTopicReplicationFactorProp(), "" + this.count);
-		this.brokerProperties.putIfAbsent(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+		this.brokerProperties.putIfAbsent("delete.topic.enable", "true");
+		this.brokerProperties.putIfAbsent("group.initial.rebalance.delay.ms", "0");
+		this.brokerProperties.putIfAbsent("offsets.topic.replication.factor", "" + this.count);
+		this.brokerProperties.putIfAbsent("num.partitions", "" + this.partitionsPerTopic);
 	}
 
 	private void logDir(Properties brokerConfigProperties) {
 		try {
-			brokerConfigProperties.put(KafkaConfig.LogDirProp(),
+			brokerConfigProperties.put("log.dir",
 					Files.createTempDirectory("spring.kafka." + UUID.randomUUID()).toString());
 		}
 		catch (IOException e) {
@@ -531,7 +533,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		List<String> notEmbedded = Arrays.stream(topicsToConsume)
 				.filter(topic -> !this.topics.contains(topic))
 				.collect(Collectors.toList());
-		if (notEmbedded.size() > 0) {
+		if (!notEmbedded.isEmpty()) {
 			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
 		}
 		final AtomicReference<Collection<TopicPartition>> assigned = new AtomicReference<>();
